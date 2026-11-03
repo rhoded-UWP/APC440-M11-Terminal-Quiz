@@ -113,10 +113,10 @@ main { padding-top: 20px; padding-bottom: 32px; }
 .task-text { font-size: 1.15rem; font-weight: 600; margin: 0; }
 .task-text code { background: var(--accent-soft); border-radius: 6px; padding: 1px 6px; overflow-wrap: anywhere; }
 .term { background: var(--term-bg); color: var(--term-ink); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; border: 1px solid #30363d; }
-.term-bar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #161b22; color: var(--term-muted); font-size: .85rem; font-family: var(--mono); }
+.term-bar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #161b22; color: var(--term-muted); font-size: .95rem; font-family: var(--mono); }
 .dots { display: inline-flex; gap: 6px; }
 .dots i { width: 11px; height: 11px; border-radius: 50%; background: #484f58; display: inline-block; }
-.term-body { font-family: var(--mono); font-size: .95rem; padding: 14px; min-height: 280px; max-height: 420px; overflow-y: auto; cursor: text; }
+.term-body { font-family: var(--mono); font-size: 1.1rem; padding: 14px; min-height: 280px; max-height: 420px; overflow-y: auto; cursor: text; }
 .term-log { margin: 0; padding: 0; list-style: none; }
 .term-log li { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 .t-prompt { color: var(--term-prompt); font-weight: 700; }
@@ -155,7 +155,7 @@ main { padding-top: 20px; padding-bottom: 32px; }
 }
 @media (max-width: 560px) {
   .card { padding: 16px; }
-  .term-body { font-size: .88rem; min-height: 240px; }
+  .term-body { font-size: 1rem; min-height: 240px; }
   .tray { padding: 10px 12px 12px; }
   .tray-scroll { max-height: 30vh; }
   .chip { font-size: .85rem; padding: 5px 11px; }

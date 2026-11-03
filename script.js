@@ -27,7 +27,7 @@
   ];
 
   /* ---------- Part 2 content ---------- */
-  var KNOWN = ['cd', 'ls', 'pwd', 'mkdir', 'git', 'npm', 'node', 'npx', 'clear', 'dir'];
+  var KNOWN = ['cd', 'ls', 'pwd', 'mkdir', 'git', 'npm', 'node', 'npx', 'clear'];
 
   function cdTarget(cmd) {
     var m = /^cd (\S+)$/.exec(cmd);
@@ -47,13 +47,6 @@
 
   var TASKS = [
     {
-      task: function () { return 'Print the full path of the folder you are in right now.'; },
-      answer: function () { return 'pwd'; },
-      hint: 'This command\'s name stands for "print working directory."',
-      check: oneOf('pwd'),
-      run: function (st) { return [{ c: 't-out', t: '/home/student' + (st.cwd.length ? '/' + st.cwd.join('/') : '') }]; }
-    },
-    {
       task: function () { return 'List what is inside this folder.'; },
       answer: function () { return 'ls'; },
       hint: 'It is a two-letter command, short for "list."',
@@ -61,7 +54,7 @@
       run: lsLines
     },
     {
-      task: function () { return 'Move into the projects folder.'; },
+      task: function () { return 'Change directory into the already existing projects folder.'; },
       answer: function () { return 'cd projects'; },
       hint: 'Use cd, a space, then the folder name.',
       check: cdInto(function () { return 'projects'; }),
@@ -89,7 +82,7 @@
     {
       task: function () { return 'Check that the new folder is here. List what is inside the projects folder.'; },
       answer: function () { return 'ls'; },
-      hint: 'Same two-letter command you used earlier.',
+      hint: 'Same two-letter command you used in the first task.',
       check: oneOf('ls'),
       run: lsLines
     },
@@ -157,28 +150,6 @@
       }
     },
     {
-      task: function () { return 'Make a new folder named <code>public</code> to hold your lesson pages.'; },
-      answer: function () { return 'mkdir public'; },
-      hint: 'The command is short for "make directory."',
-      check: oneOf('mkdir public'),
-      run: function (st) { addDir(st, 'public'); return []; }
-    },
-    {
-      task: function () { return 'You added a page to public and edited server.js. Before you commit, see which files changed.'; },
-      answer: function () { return 'git status'; },
-      hint: 'git, then a word that means "current condition."',
-      check: oneOf('git status'),
-      run: function () {
-        return [
-          { c: 't-out', t: 'On branch main' },
-          { c: 't-out', t: 'Changes not staged for commit:' },
-          { c: 't-err', t: '        modified:   server.js' },
-          { c: 't-out', t: 'Untracked files:' },
-          { c: 't-err', t: '        public/' }
-        ];
-      }
-    },
-    {
       task: function () { return 'Stage every change in the repository (new, edited, and deleted files) for your next commit.'; },
       answer: function () { return 'git add -A'; },
       hint: 'git add, then the flag that means "all." It is a capital letter.',
@@ -190,15 +161,15 @@
       run: function () { return []; }
     },
     {
-      task: function () { return 'Save the staged changes as a snapshot, with a short message in quotes that describes what you did.'; },
-      answer: function () { return 'git commit -m "Add public folder"'; },
+      task: function () { return 'Save the staged changes as a snapshot, with a short message in quotes that describes what you did (accepts any message).'; },
+      answer: function () { return 'git commit -m "Add Lab 11 lesson page"'; },
       hint: 'git commit, the flag for "message," then your message inside quotes.',
       check: function (cmd) {
         var m = /^git commit -m (?:"([^"]*\S[^"]*)"|'([^']*\S[^']*)')$/.exec(cmd);
         return m ? { msg: m[1] || m[2] } : false;
       },
       diagnose: function (cmd) {
-        if (/^git commit -m [^"']/.test(cmd)) return 'Put your message inside quotes, like git commit -m "Add public folder"';
+        if (/^git commit -m [^"']/.test(cmd)) return 'Put your message inside quotes, like git commit -m "Add Lab 11 lesson page"';
         if (cmd === 'git commit' || cmd === 'git commit -m') return 'Add -m and a message in quotes. Without a message, git opens a text editor and waits.';
         if (/^git commit -m ("\s*"|'\s*')$/.test(cmd)) return 'Your message is empty. Describe what you changed.';
         return null;
@@ -251,15 +222,8 @@
       hint: 'cd, a space, then two dots.',
       check: function (cmd) { return cdTarget(cmd) === '..'; },
       wrong: { 'cd..': 'Put a space between cd and the two dots.', 'cd projects': 'You are inside your Lab 11 folder, and projects is one level up. Go up one level instead.' },
-      run: function (st) { st.cwd.pop(); return []; }
+      run: function (st) { st.cwd.pop(); return [{ c: 't-note', t: 'Nice work. That is every command in the quiz.' }]; }
     },
-    {
-      task: function () { return 'Move into your <code>weather-app</code> folder to look back at your React project.'; },
-      answer: function () { return 'cd weather-app'; },
-      hint: 'cd, a space, then the folder name.',
-      check: cdInto(function () { return 'weather-app'; }),
-      run: function (st) { st.cwd.push('weather-app'); return [{ c: 't-note', t: 'Nice work. That is every command in the quiz.' }]; }
-    }
   ];
 
   var TOTAL1 = MATCH.length;
