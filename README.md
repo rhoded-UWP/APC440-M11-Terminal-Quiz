@@ -6,7 +6,7 @@ Students practice the terminal, npm, and git commands they use in every lab.
 
 - **Part 1: Match the command.** Drag each command from the tray onto the description of what it does. A timer starts at the first touch of a command and stops at the last match, and the time goes on the score image. Keyboard and touch users can select a command, then select "Place here."
 - **Part 2: Type the command.** A practice terminal walks through a Lab 11 workflow: list and change folders, clone, check versions, install, run, stage, commit, push, tag, and push the tag. The prompt tracks which folder you are in.
-- **Submit.** Scores count first tries only. Students type their name and select "Submit my score" to download a score image with a verification code, then upload it to Canvas. They can replay either part and submit again as often as they like.
+- **Submit.** Part 1 counts first tries. Part 2 counts a task as correct on the first or second try. Students type their name and select "Submit my score" to download a score image with a verification code, then upload it to Canvas. They can replay either part and submit again as often as they like.
 
 ## Files
 

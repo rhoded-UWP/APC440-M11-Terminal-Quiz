@@ -47,7 +47,7 @@
 
   var TASKS = [
     {
-      task: function () { return 'List what is inside this folder.'; },
+      task: function () { return 'Type <code>ls</code> to list the folders and files in this directory. You will be using the ls command again!'; },
       answer: function () { return 'ls'; },
       hint: 'It is a two-letter command, short for "list."',
       check: oneOf('ls'),
@@ -561,7 +561,7 @@
       h('ol', { class: 'how' },
         h('li', null, 'Read the task, type the command in the practice terminal, and press Enter.'),
         h('li', null, 'The terminal remembers which folder you are in, just like a real one. Watch the prompt change when you use cd.'),
-        h('li', null, 'Capital letters matter. Only your first try for each task counts toward your score. After two misses, the answer appears so you can type it and keep going.'),
+        h('li', null, 'Capital letters matter. You get two tries for each task. If you get it right on the first or second try, it counts toward your score. After two misses, the answer appears so you can type it and keep going.'),
         h('li', null, 'Press the up arrow to bring back a command you already typed.')));
 
     var task = h('section', { class: 'card card-sun task-card', 'aria-live': 'polite', 'data-key': 'task' });
@@ -607,7 +607,7 @@
     var after = $('[data-key="p2-after"]');
     if (p.done) {
       task.replaceChildren(h('p', { class: 'task-num' }, 'Part 2 complete'),
-        h('p', { class: 'task-text' }, p.score + ' of ' + TOTAL2 + ' typed correctly on the first try.'));
+        h('p', { class: 'task-text' }, p.score + ' of ' + TOTAL2 + ' typed correctly within two tries.'));
       input.disabled = true;
       after.replaceChildren(h('div', { class: 'btn-row' },
         h('button', { type: 'button', class: 'btn', 'data-key': 'to-results', onclick: function () { go('results'); } }, 'Go to Submit'),
@@ -668,25 +668,25 @@
     var res = t.check(cmd, p);
     if (res) {
       if (p.first[p.idx] === undefined) p.first[p.idx] = true;
+      var tryWord = p.misses === 0 ? ' on the first try.' : p.misses === 1 ? ' on the second try.' : '.';
       var out = t.run(p, res) || [];
       out.forEach(pushLog);
-      var firstTry = p.first[p.idx] === true;
-      p.fb = { kind: 'ok', html: '✓ Correct' + (firstTry ? ' on the first try.' : '.') + ' <code>' + esc(cmd) + '</code>' };
+      p.fb = { kind: 'ok', html: '✓ Correct' + tryWord + ' <code>' + esc(cmd) + '</code>' };
       announce('Correct. ' + out.map(function (o) { return o.t; }).join('. '));
       p.idx++;
       p.misses = 0;
       if (p.idx >= TOTAL2) finishP2();
     } else {
-      if (p.first[p.idx] === undefined) p.first[p.idx] = false;
       p.misses++;
+      if (p.misses >= 2 && p.first[p.idx] === undefined) p.first[p.idx] = false;
       var err = simulateError(cmd, p);
       if (err) pushLog({ c: 't-err', t: err });
       var why = diagnose(cmd, t, p);
       var html = '✗ ' + esc(why || 'Not quite. That command does not do what the task asks.');
-      if (p.misses === 1) html += ' Hint: ' + esc(t.hint);
+      if (p.misses === 1) html += ' Hint: ' + esc(t.hint) + ' You have one more try before this task counts against your score.';
       else html += ' Type this to keep going: <code>' + esc(t.answer(p)) + '</code>';
       p.fb = { kind: 'no', html: html };
-      announce((why || 'Not quite.') + (p.misses === 1 ? ' Hint: ' + t.hint : ' Type this to keep going: ' + t.answer(p)));
+      announce((why || 'Not quite.') + (p.misses === 1 ? ' Hint: ' + t.hint + ' You have one more try.' : ' Type this to keep going: ' + t.answer(p)));
     }
     updateP2();
   }
@@ -721,7 +721,7 @@
     p.done = true;
     p.score = TASKS.filter(function (x, i) { return p.first[i] === true; }).length;
     S.best2 = S.best2 === null ? p.score : Math.max(S.best2, p.score);
-    p.fb = { kind: 'ok', html: '✓ Part 2 complete: ' + p.score + ' of ' + TOTAL2 + ' on the first try.' };
+    p.fb = { kind: 'ok', html: '✓ Part 2 complete: ' + p.score + ' of ' + TOTAL2 + ' within two tries.' };
     renderSteps();
     setTimeout(function () { var b = $('[data-key="to-results"]'); if (b) b.focus({ preventScroll: true }); }, 50);
   }
@@ -744,20 +744,20 @@
         h('p', null, 'Verification code: ', h('span', { class: 'code-big' }, S.saved.code)),
         h('p', null, 'Saved: ' + S.saved.ts),
         h('p', { class: 'help' }, 'Did the download not start? Right-click the image below (or press and hold on a phone) and save it.'),
-        h('img', { src: S.saved.url, alt: 'Terminal Quiz score for ' + S.saved.name + ': ' + S.saved.pct + ' percent correct on the first try, Part 1 ' + S.saved.p1 + ' of ' + TOTAL1 + ' in ' + fmtTime(S.saved.t1) + ', Part 2 ' + S.saved.p2 + ' of ' + TOTAL2 + ', verification code ' + S.saved.code + '.' }));
+        h('img', { src: S.saved.url, alt: 'Terminal Quiz score for ' + S.saved.name + ': ' + S.saved.pct + ' percent, Part 1 ' + S.saved.p1 + ' of ' + TOTAL1 + ' in ' + fmtTime(S.saved.t1) + ', Part 2 ' + S.saved.p2 + ' of ' + TOTAL2 + ', verification code ' + S.saved.code + '.' }));
     }
 
     app.replaceChildren(
       h('section', { class: 'card', 'aria-labelledby': 'res-title' },
         h('h2', { id: 'res-title' }, 'Submit your score'),
         h('p', { class: 'big-pct' }, pct(sum, GRAND) + '%'),
-        h('p', null, 'correct on the first try (' + sum + ' of ' + GRAND + ')'),
+        h('p', null, 'correct (' + sum + ' of ' + GRAND + '). Part 1 counts first tries. Part 2 counts first or second tries.'),
         h('table', { class: 'score-table' },
-          h('caption', { class: 'sr-only' }, 'Your best first-try score for each part'),
-          h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Part'), h('th', { scope: 'col' }, 'Best first-try score'))),
+          h('caption', { class: 'sr-only' }, 'Your best score for each part'),
+          h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Part'), h('th', { scope: 'col' }, 'Best score'))),
           h('tbody', null,
-            h('tr', null, h('td', null, 'Part 1: Match the command'), h('td', null, p1 + ' of ' + TOTAL1 + ' in ' + fmtTime(S.best1Time))),
-            h('tr', null, h('td', null, 'Part 2: Type the command'), h('td', null, p2 + ' of ' + TOTAL2))),
+            h('tr', null, h('td', null, 'Part 1: Match the command (first try)'), h('td', null, p1 + ' of ' + TOTAL1 + ' in ' + fmtTime(S.best1Time))),
+            h('tr', null, h('td', null, 'Part 2: Type the command (within two tries)'), h('td', null, p2 + ' of ' + TOTAL2))),
           h('tfoot', null, h('tr', null, h('th', { scope: 'row' }, 'Total'), h('td', null, sum + ' of ' + GRAND + ' (' + pct(sum, GRAND) + '%)')))),
         sum === GRAND
           ? h('p', null, h('strong', null, 'Perfect score!'))
@@ -861,14 +861,14 @@
     g.fillText(p2 + ' of ' + TOTAL2, 720, 386);
     g.beginPath(); g.moveTo(80, 414); g.lineTo(720, 414); g.stroke();
     g.textAlign = 'left'; g.font = '800 26px ' + F;
-    g.fillText('Total: ' + (p1 + p2) + ' of ' + GRAND + ' correct on the first try', 80, 458);
+    g.fillText('Total: ' + (p1 + p2) + ' of ' + GRAND + ' correct', 80, 458);
 
     // Score badge
     g.fillStyle = '#e3eefa'; g.strokeStyle = '#1a64b7'; g.lineWidth = 6;
     g.beginPath(); g.arc(960, 330, 120, 0, Math.PI * 2); g.fill(); g.stroke();
     g.fillStyle = '#124d8f'; g.textAlign = 'center';
     g.font = '800 76px ' + F; g.fillText(percent + '%', 960, 350);
-    g.font = '600 20px ' + F; g.fillStyle = '#16212d'; g.fillText('first-try score', 960, 390);
+    g.font = '600 20px ' + F; g.fillStyle = '#16212d'; g.fillText('score', 960, 390);
 
     // Little terminal
     roundRect(g, 80, 494, 520, 104, 14);
