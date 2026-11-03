@@ -267,13 +267,29 @@
   function smooth() { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'; }
   function loadName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
   function storeName(v) { try { localStorage.setItem(NAME_KEY, v); } catch (e) { /* storage unavailable */ } }
+  function fmtTime(sec) { sec = Math.max(0, Math.round(sec)); var m = Math.floor(sec / 60), r = sec % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
+  function spokenTime(sec) { var m = Math.floor(sec / 60), r = sec % 60; return (m ? m + (m === 1 ? ' minute ' : ' minutes ') : '') + r + (r === 1 ? ' second' : ' seconds'); }
+  var timerId = null;
+  function elapsed(p) { return p.startedAt ? (Date.now() - p.startedAt) / 1000 : 0; }
+  function startTimer() {
+    var p = S.p1;
+    if (!p || p.done || p.startedAt) return;
+    p.startedAt = Date.now();
+    clearInterval(timerId);
+    timerId = setInterval(tick, 1000);
+    tick();
+  }
+  function tick() {
+    var p = S.p1, el = $('[data-key="p1-time"]');
+    if (el && p) el.textContent = 'Time ' + fmtTime(p.done ? p.time : elapsed(p));
+  }
   function pct(a, b) { return Math.round((a / b) * 100); }
   function byId(id) { for (var i = 0; i < MATCH.length; i++) if (MATCH[i].id === id) return MATCH[i]; return null; }
 
   /* ---------- Verification code (FNV-1a, 64-bit, base 36) ---------- */
   function normName(name) { return String(name).trim().replace(/\s+/g, ' ').toLowerCase(); }
-  function makeCode(name, p1, p2, ts) {
-    var str = [normName(name), String(Number(p1)), String(Number(p2)), String(ts).trim(), SECRET].join('|');
+  function makeCode(name, p1, t1, p2, ts) {
+    var str = [normName(name), String(Number(p1)), String(Number(t1)), String(Number(p2)), String(ts).trim(), SECRET].join('|');
     var bytes = new TextEncoder().encode(str);
     var hash = BigInt('0xcbf29ce484222325');
     var prime = BigInt('0x100000001b3');
@@ -295,6 +311,7 @@
   var S = {
     view: 'p1',
     best1: null,
+    best1Time: null,
     best2: null,
     p1: null,
     p2: null,
@@ -303,7 +320,7 @@
   };
 
   function newP1() {
-    return { tray: shuffle(MATCH.map(function (m) { return m.id; })), order: shuffle(MATCH.map(function (m) { return m.id; })), placed: {}, first: {}, sel: null, wrongSlot: null, msg: null, done: false, score: null };
+    return { tray: shuffle(MATCH.map(function (m) { return m.id; })), order: shuffle(MATCH.map(function (m) { return m.id; })), placed: {}, first: {}, sel: null, wrongSlot: null, msg: null, done: false, score: null, startedAt: null, time: null };
   }
   function newP2() {
     return {
@@ -342,7 +359,7 @@
 
   function go(view, fresh) {
     S.view = view;
-    if (view === 'p1' && (!S.p1 || fresh)) S.p1 = newP1();
+    if (view === 'p1' && (!S.p1 || fresh)) { clearInterval(timerId); S.p1 = newP1(); }
     if (view === 'p2' && (!S.p2 || fresh)) S.p2 = newP2();
     render();
     var main = $('#main');
@@ -365,8 +382,11 @@
     var intro = h('section', { class: 'card', 'aria-labelledby': 'p1-title' },
       h('div', { class: 'match-head' },
         h('h2', { id: 'p1-title' }, 'Part 1: Match the command'),
-        h('span', { class: 'pill' }, matchedCount + ' of ' + TOTAL1 + ' matched')),
+        h('span', { class: 'pills' },
+          h('span', { class: 'pill' }, matchedCount + ' of ' + TOTAL1 + ' matched'),
+          h('span', { class: 'pill pill-time', role: 'timer', 'aria-live': 'off', 'data-key': 'p1-time' }, 'Time ' + fmtTime(p.done ? p.time : elapsed(p))))),
       h('ol', { class: 'how' },
+        h('li', null, 'The timer starts when you first touch a command and stops when every command is matched. Your time goes on your score image.'),
         h('li', null, 'Drag a command from the tray at the bottom of the screen onto the description of what it does.'),
         h('li', null, 'No mouse? Select a command button, then select the "Place here" button under a description.'),
         h('li', null, 'Only your first try for each command counts toward your score. Keep going until every command is matched.')));
@@ -394,7 +414,7 @@
     var trayBody;
     if (p.done) {
       trayBody = h('div', null,
-        h('p', null, h('strong', null, 'Part 1 complete. '), p.score + ' of ' + TOTAL1 + ' matched on the first try.'),
+        h('p', null, h('strong', null, 'Part 1 complete. '), p.score + ' of ' + TOTAL1 + ' matched on the first try, in ' + fmtTime(p.time) + '.'),
         h('div', { class: 'btn-row' },
           h('button', { type: 'button', class: 'btn', 'data-key': 'to-p2', onclick: function () { go('p2', !S.p2 || S.p2.done); } }, S.best2 === null ? 'Start Part 2: Type the commands' : 'Go to Part 2'),
           h('button', { type: 'button', class: 'btn btn-ghost', onclick: function () { go('p1', true); } }, 'Replay Part 1')));
@@ -407,6 +427,7 @@
         }, m.cmd);
         chip.addEventListener('click', function () {
           if (chip._suppress) { chip._suppress = false; return; }
+          startTimer();
           p.sel = p.sel === id ? null : id;
           p.msg = p.sel ? { kind: 'info', text: 'Selected ' + m.cmd + '. Now choose the description it matches.' } : null;
           announce(p.sel ? 'Selected ' + m.cmd + '. Now choose Place here under the matching description.' : 'Selection cleared.');
@@ -461,9 +482,11 @@
     var p = S.p1;
     p.done = true;
     p.score = MATCH.filter(function (m) { return p.first[m.id] === true; }).length;
-    S.best1 = S.best1 === null ? p.score : Math.max(S.best1, p.score);
-    setMsg('ok', '✓ Part 1 complete: ' + p.score + ' of ' + TOTAL1 + ' on the first try.');
-    announce('Part 1 complete. ' + p.score + ' of ' + TOTAL1 + ' matched on the first try.');
+    p.time = Math.max(1, Math.round(elapsed(p)));
+    clearInterval(timerId);
+    if (S.best1 === null || p.score > S.best1 || (p.score === S.best1 && p.time < S.best1Time)) { S.best1 = p.score; S.best1Time = p.time; }
+    setMsg('ok', '✓ Part 1 complete: ' + p.score + ' of ' + TOTAL1 + ' on the first try, in ' + fmtTime(p.time) + '.');
+    announce('Part 1 complete. ' + p.score + ' of ' + TOTAL1 + ' matched on the first try, in ' + spokenTime(p.time) + '.');
     renderSteps();
   }
 
@@ -472,6 +495,7 @@
     var start = null, ghost = null, hoverEl = null;
     chip.addEventListener('pointerdown', function (e) {
       if (e.button !== 0) return;
+      startTimer();
       start = { x: e.clientX, y: e.clientY, pid: e.pointerId };
     });
     chip.addEventListener('pointermove', function (e) {
@@ -716,11 +740,11 @@
     if (S.saved) {
       saved = h('div', { class: 'saved', 'data-key': 'saved-box', tabindex: '-1' },
         h('p', null, h('strong', null, h('span', { 'aria-hidden': 'true' }, '✓ '), 'Score image saved. '), 'It downloaded as ' + S.saved.fname + '.'),
-        h('p', null, 'Score on the image: ', h('strong', null, S.saved.pct + '%')),
+        h('p', null, 'Score on the image: ', h('strong', null, S.saved.pct + '%'), ', Part 1 time ', h('strong', null, fmtTime(S.saved.t1))),
         h('p', null, 'Verification code: ', h('span', { class: 'code-big' }, S.saved.code)),
         h('p', null, 'Saved: ' + S.saved.ts),
         h('p', { class: 'help' }, 'Did the download not start? Right-click the image below (or press and hold on a phone) and save it.'),
-        h('img', { src: S.saved.url, alt: 'Terminal Quiz score for ' + S.saved.name + ': ' + S.saved.pct + ' percent correct on the first try, Part 1 ' + S.saved.p1 + ' of ' + TOTAL1 + ', Part 2 ' + S.saved.p2 + ' of ' + TOTAL2 + ', verification code ' + S.saved.code + '.' }));
+        h('img', { src: S.saved.url, alt: 'Terminal Quiz score for ' + S.saved.name + ': ' + S.saved.pct + ' percent correct on the first try, Part 1 ' + S.saved.p1 + ' of ' + TOTAL1 + ' in ' + fmtTime(S.saved.t1) + ', Part 2 ' + S.saved.p2 + ' of ' + TOTAL2 + ', verification code ' + S.saved.code + '.' }));
     }
 
     app.replaceChildren(
@@ -732,12 +756,12 @@
           h('caption', { class: 'sr-only' }, 'Your best first-try score for each part'),
           h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Part'), h('th', { scope: 'col' }, 'Best first-try score'))),
           h('tbody', null,
-            h('tr', null, h('td', null, 'Part 1: Match the command'), h('td', null, p1 + ' of ' + TOTAL1)),
+            h('tr', null, h('td', null, 'Part 1: Match the command'), h('td', null, p1 + ' of ' + TOTAL1 + ' in ' + fmtTime(S.best1Time))),
             h('tr', null, h('td', null, 'Part 2: Type the command'), h('td', null, p2 + ' of ' + TOTAL2))),
           h('tfoot', null, h('tr', null, h('th', { scope: 'row' }, 'Total'), h('td', null, sum + ' of ' + GRAND + ' (' + pct(sum, GRAND) + '%)')))),
         sum === GRAND
           ? h('p', null, h('strong', null, 'Perfect score!'))
-          : h('p', null, 'Want a higher score? Replay either part as many times as you like. Your best score for each part is kept until you reload the page.'),
+          : h('p', null, 'Want a higher score? Replay either part as many times as you like. Your best score for each part is kept until you reload the page. For Part 1, a tie goes to your faster time.'),
         h('div', { class: 'btn-row' },
           h('button', { type: 'button', class: 'btn btn-ghost', onclick: function () { go('p1', true); } }, 'Replay Part 1'),
           h('button', { type: 'button', class: 'btn btn-ghost', onclick: function () { go('p2', true); } }, 'Replay Part 2'))),
@@ -766,11 +790,12 @@
     if (!name) { announce('Type your name first.'); return; }
     var p1 = S.best1, p2 = S.best2;
     var ts = stamp(new Date());
-    var code = makeCode(name, p1, p2, ts);
+    var t1 = S.best1Time;
+    var code = makeCode(name, p1, t1, p2, ts);
     var percent = pct(p1 + p2, GRAND);
-    var canvas = drawCert(name, p1, p2, percent, ts, code);
+    var canvas = drawCert(name, p1, t1, p2, percent, ts, code);
     var fname = 'Module11-TerminalQuiz-' + safeName(name) + '.png';
-    S.saved = { name: name, p1: p1, p2: p2, pct: percent, code: code, ts: ts, fname: fname, url: canvas.toDataURL('image/png') };
+    S.saved = { name: name, p1: p1, t1: t1, p2: p2, pct: percent, code: code, ts: ts, fname: fname, url: canvas.toDataURL('image/png') };
     if (canvas.toBlob) canvas.toBlob(function (blob) { download(URL.createObjectURL(blob), fname, true); }, 'image/png');
     else download(S.saved.url, fname, false);
     render();
@@ -794,7 +819,7 @@
     g.arcTo(x, y, x + w, y, r);
     g.closePath();
   }
-  function drawCert(name, p1, p2, percent, ts, code) {
+  function drawCert(name, p1, t1, p2, percent, ts, code) {
     var W = 1200, H = 675;
     var c = document.createElement('canvas');
     c.width = W; c.height = H;
@@ -832,7 +857,7 @@
     g.fillText('Part 1: Match the command', 80, 340);
     g.fillText('Part 2: Type the command', 80, 386);
     g.textAlign = 'right'; g.font = '700 24px ' + F;
-    g.fillText(p1 + ' of ' + TOTAL1, 720, 340);
+    g.fillText(p1 + ' of ' + TOTAL1 + '  in ' + fmtTime(t1), 720, 340);
     g.fillText(p2 + ' of ' + TOTAL2, 720, 386);
     g.beginPath(); g.moveTo(80, 414); g.lineTo(720, 414); g.stroke();
     g.textAlign = 'left'; g.font = '800 26px ' + F;
@@ -875,10 +900,11 @@
     }
     var form = h('form', { class: 'card', novalidate: true },
       h('h2', null, 'Check a score image'),
-      h('p', null, 'Type the details exactly as they appear on the student\'s image.'),
+      h('p', null, 'Type the details exactly as they appear on the student\'s image, including the Part 1 time.'),
       field('v-name', 'Student name', { type: 'text', autocomplete: 'off' }, 'Capital letters and extra spaces do not matter.'),
       h('div', { class: 'verify-grid' },
         field('v-p1', 'Part 1 score (0 to ' + TOTAL1 + ')', { type: 'number', inputmode: 'numeric', min: '0', max: String(TOTAL1), step: '1' }),
+        field('v-t1', 'Part 1 time (like 2:05)', { type: 'text', inputmode: 'numeric', autocomplete: 'off', placeholder: '2:05' }),
         field('v-p2', 'Part 2 score (0 to ' + TOTAL2 + ')', { type: 'number', inputmode: 'numeric', min: '0', max: String(TOTAL2), step: '1' })),
       field('v-ts', 'Date and time', { type: 'text', autocomplete: 'off', placeholder: '2027-03-15 17:45' }, 'The part after "Saved:" on the image, like 2027-03-15 17:45.'),
       field('v-code', 'Verification code', { type: 'text', autocomplete: 'off', maxlength: '8', spellcheck: 'false' }),
@@ -888,14 +914,16 @@
       e.preventDefault();
       var name = $('#v-name').value, ts = $('#v-ts').value, code = $('#v-code').value.trim().toUpperCase();
       var a = $('#v-p1').value.trim(), b = $('#v-p2').value.trim();
-      var bad = !name.trim() || !ts.trim() || !code || !/^\d+$/.test(a) || !/^\d+$/.test(b) || Number(a) > TOTAL1 || Number(b) > TOTAL2;
+      var tm = /^(\d+):([0-5]\d)$/.exec($('#v-t1').value.trim());
+      var bad = !tm || !name.trim() || !ts.trim() || !code || !/^\d+$/.test(a) || !/^\d+$/.test(b) || Number(a) > TOTAL1 || Number(b) > TOTAL2;
       if (bad) {
         result.className = 'result warn';
-        result.textContent = 'Fill in every field. Each score is a whole number from 0 to that part\'s total.';
+        result.textContent = 'Fill in every field. Each score is a whole number from 0 to that part\'s total, and the time looks like 2:05.';
         return;
       }
       var fold = function (s) { return s.replace(/O/g, '0').replace(/[IL]/g, '1'); };
-      var match = fold(makeCode(name, Number(a), Number(b), ts)) === fold(code);
+      var secs = Number(tm[1]) * 60 + Number(tm[2]);
+      var match = fold(makeCode(name, Number(a), secs, Number(b), ts)) === fold(code);
       result.className = 'result ' + (match ? 'ok' : 'no');
       result.textContent = match
         ? '✓ Code matches. Score: ' + pct(Number(a) + Number(b), GRAND) + '%'
